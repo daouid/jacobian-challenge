@@ -4,8 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
 import Jacobians.Bridge.KirovDolbeaultTrace
+import Jacobians.Bridge.SmoothLoopDevelopingBridge
+import Jacobians.Bridge.KirovDolbeaultPeriods
 import KirovDolbeault.PeriodLattice
 import Jacobians.RiemannSurface.Genus
+import Jacobians.RiemannSurface.LoopLattice
+import Jacobians.RiemannSurface.LoopIntegralHom
 import KirovDolbeault.TracePullback
 import Jacobians.Jacobian.Construction
 import Jacobians.Axioms.PeriodLatticeBase
@@ -243,17 +247,121 @@ noncomputable def latticeBridgeEquiv (Y : Type*) [TopologicalSpace Y] [T2Space Y
   left_inv := latticeBridgeInv_left_inverse
   right_inv := latticeBridgeInv_right_inverse
 
-/-- Axiom: Kirov's true period lattice maps into our coordinate period lattice. -/
-axiom latticeBridge_truePeriodLattice_le (Y : Type*) [TopologicalSpace Y] [T2Space Y] [CompactSpace Y]
-    [ConnectedSpace Y] [ChartedSpace ℂ Y] [IsManifold 𝓘(ℂ) ω Y] [Nonempty Y] :
+/-- **Port lattice → our lattice.** Every vector in Kirov's `truePeriodLattice`
+maps under `latticeBridge` into our `periodLatticeInBasis`. Proved by
+`span_induction` on the smooth-loop generators: the bridge theorem
+(`lineIntegral_bridgeKDFormEquiv_eq_developingValue`) equates Kirov's
+`lineIntegral` with our `developingValue`, and
+`devVal_loop_mem_periodLatticeInBasis_any` gives membership. -/
+theorem latticeBridge_truePeriodLattice_le
+    (Y : Type*) [TopologicalSpace Y] [T2Space Y]
+    [CompactSpace Y] [ConnectedSpace Y] [ChartedSpace ℂ Y]
+    [IsManifold 𝓘(ℂ) ω Y] [Nonempty Y] :
     ∀ w ∈ truePeriodLattice Y,
-      latticeBridge Y w ∈ periodLatticeInBasis Y (Classical.arbitrary Y) (jacobianBasis Y)
+      latticeBridge Y w ∈
+        periodLatticeInBasis Y (Classical.arbitrary Y)
+          (jacobianBasis Y) := by
+  intro w hw
+  rw [truePeriodLattice] at hw
+  induction hw using Submodule.span_induction with
+  | mem x hx =>
+    obtain ⟨γ, hγ, rfl⟩ := hx
+    -- The bridge theorem:
+    -- lineIntegral(bridgeKDFormEquiv(b j))(γ) = developingValue (γ 0) (b j) γ_cm
+    -- latticeBridge_periodVec:
+    -- latticeBridge(periodVec γ) j = lineIntegral(bridgeKDFormEquiv(b j))(γ)
+    -- Combined: latticeBridge(periodVec γ) = devVal vector
+    -- Then devVal_loop_mem_periodLatticeInBasis_any gives membership
+    set γpath := Jacobians.Bridge.smoothLoopToPath γ hγ with hγpath
+    have hvec : latticeBridge Y (periodVec γ) = fun j =>
+        developingValue (γ 0) (jacobianBasis Y j)
+          ((γpath : Path (γ 0) (γ 0)) : C(unitInterval, Y)) := by
+      funext j
+      rw [latticeBridge_periodVec γ hγ j]
+      -- Goal: lineIntegral ... = developingValue ... ↑γpath
+      -- Bridge theorem: Vendor.Kirov.lineIntegral ... = developingValue ... (smoothLoopToContinuousMap ...)
+      -- These are the same because lineIntegral = Vendor.Kirov.lineIntegral
+      -- and ↑γpath = smoothLoopToContinuousMap
+      show Jacobians.Vendor.Kirov.lineIntegral
+        (bridgeKDFormEquiv (jacobianBasis Y j)) γ =
+        developingValue (γ 0) (jacobianBasis Y j)
+          ((γpath : Path (γ 0) (γ 0)) : C(unitInterval, Y))
+      rw [Jacobians.Bridge.lineIntegral_bridgeKDFormEquiv_eq_developingValue
+        (γ 0) (jacobianBasis Y j) γ hγ]
+      exact congr_arg _ (Jacobians.Bridge.smoothLoopToPath_eq_smoothLoopToContinuousMap
+        γ hγ).symm
+    rw [hvec]
+    exact devVal_loop_mem_periodLatticeInBasis_any
+      (Classical.arbitrary Y) (jacobianBasis Y) γpath
+  | zero => simp
+  | add x y _ _ ihx ihy =>
+    rw [map_add]
+    exact Submodule.add_mem _ ihx ihy
+  | smul a x _ ih =>
+    rw [map_zsmul]
+    exact Submodule.smul_mem _ a ih
 
-/-- Axiom: Our coordinate period lattice maps into Kirov's true period lattice. -/
-axiom truePeriodLattice_le_periodLatticeInBasis (Y : Type*) [TopologicalSpace Y] [T2Space Y] [CompactSpace Y]
-    [ConnectedSpace Y] [ChartedSpace ℂ Y] [IsManifold 𝓘(ℂ) ω Y] [Nonempty Y] :
-    ∀ v ∈ periodLatticeInBasis Y (Classical.arbitrary Y) (jacobianBasis Y),
-      latticeBridgeInv Y v ∈ truePeriodLattice Y
+/-- **Our lattice → port lattice.** Every vector in our
+`periodLatticeInBasis` maps under `latticeBridgeInv` into Kirov's
+`truePeriodLattice`. The proof uses the smooth representative theorem
+(`exists_isClosedSmoothLoop_lineIntegral_eq_developingValue`):
+given the continuous representative path of the H1 class, obtain a
+smooth loop whose bridged line integrals match the developing values,
+then show `latticeBridgeInv v = periodVec γ'`. -/
+theorem truePeriodLattice_le_periodLatticeInBasis
+    (Y : Type*) [TopologicalSpace Y] [T2Space Y]
+    [CompactSpace Y] [ConnectedSpace Y] [ChartedSpace ℂ Y]
+    [IsManifold 𝓘(ℂ) ω Y] [Nonempty Y] :
+    ∀ v ∈ periodLatticeInBasis Y (Classical.arbitrary Y)
+        (jacobianBasis Y),
+      latticeBridgeInv Y v ∈ truePeriodLattice Y := by
+  classical
+  intro v hv
+  set y₀ : Y := Classical.arbitrary Y with hy₀_def
+  obtain ⟨γh, hγh⟩ := hv
+  -- Every `H1` class is the class of a representative loop.
+  obtain ⟨g, hg⟩ : ∃ g : FundamentalGroup Y y₀,
+      Additive.ofMul (Abelianization.of g) = γh := by
+    obtain ⟨g, hg⟩ := Quot.exists_rep (Additive.toMul γh)
+    exact ⟨g, by simpa using congrArg Additive.ofMul hg⟩
+  obtain ⟨γp, hγp⟩ := Quotient.exists_rep (FundamentalGroup.toPath g)
+  -- The lattice vector is the developing-value vector of the loop.
+  have hcoord : ∀ j, v j = developingValue y₀ (jacobianBasis Y j)
+      ((γp : Path y₀ y₀) : C(unitInterval, Y)) := by
+    intro j
+    have h1 : v j =
+        RiemannSurface.periodMap Y y₀ γh (jacobianBasis Y j) := by
+      rw [← hγh]
+      change ((jacobianBasis Y).dualBasis.equivFun
+        (RiemannSurface.periodMap Y y₀ γh)) j = _
+      rw [Module.Basis.dualBasis_equivFun]
+    have h2 : RiemannSurface.periodMap Y y₀ γh
+        (jacobianBasis Y j) =
+        developingValue y₀ (jacobianBasis Y j)
+          ((γp : Path y₀ y₀) : C(unitInterval, Y)) := by
+      have hPM : RiemannSurface.periodMap Y y₀ γh =
+          Jacobians.RiemannSurface.loopIntegralToH1 y₀ γh := rfl
+      rw [hPM,
+        ← Jacobians.RiemannSurface.loopDevValH1Hom_eq_loopIntegralToH1_apply,
+        ← hg,
+        Jacobians.RiemannSurface.loopDevValH1Hom_of]
+      change Jacobians.RiemannSurface.loopDevValQuotient y₀
+        (jacobianBasis Y j) (FundamentalGroup.toPath g) = _
+      rw [← hγp]
+      rfl
+    rw [h1, h2]
+  -- Smooth representative with the same bridged line integrals.
+  obtain ⟨γ', hγ', _hbase, hval⟩ :=
+    Jacobians.Bridge.exists_isClosedSmoothLoop_lineIntegral_eq_developingValue
+      y₀ γp
+  have hbridge : latticeBridge Y (periodVec γ') = v := by
+    funext j
+    rw [latticeBridge_periodVec γ' hγ' j,
+      hval (jacobianBasis Y j), ← hcoord j]
+  have hinv : latticeBridgeInv Y v = periodVec γ' := by
+    rw [← hbridge, latticeBridgeInv_left_inverse]
+  rw [hinv]
+  exact periodVec_mem_truePeriodLattice_of_closed γ' hγ'
 
 namespace JacobianTorus
 
