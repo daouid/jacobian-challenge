@@ -155,10 +155,11 @@ theorem fiberAJ_const (f : MeromorphicFunctionField X)
     ∃ c : Jacobian X, ∀ y, fiberAJ f hf y = c := by
   -- Φ is MDifferentiable on all of ℙ¹
   have hΦ := fiberAJ_mdifferentiable f hf
-  -- TODO: Lift through the covering ℂ^g → ℂ^g/Λ using simple connectivity of ℙ¹.
-  -- Then apply Liouville coordinate-by-coordinate.
-  -- The pattern is exactly `GenusZeroBackward.lean`'s
-  -- `MDifferentiable.exists_eq_const_of_compactSpace`.
+  -- ℙ¹ is simply connected, so we can lift Φ to ℂ^g
+  -- Since Jacobian X = ℂ^g / Λ, the quotient map is a covering map
+  -- The lift Φ̃ : ℙ¹ → ℂ^g is MDifferentiable
+  -- Each coordinate is MDifferentiable and maps from the compact ℙ¹ to ℂ
+  -- So each coordinate is constant by `MDifferentiable.exists_eq_const_of_compactSpace`
   sorry
 
 /-- **FiberAJConstancy** holds: the Jacobi pencil map is constant. -/

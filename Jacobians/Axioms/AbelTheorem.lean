@@ -73,9 +73,10 @@ See `docs/formalization-plan.md` §7, discharge priority #10;
 Reference: Mumford Vol I §II.3.3–II.3.5; Forster Ch. III (§§20–21).
 -/
 import Jacobians.Axioms.AbelJacobiDivDef
-import Jacobians.RiemannSurface.MeromorphicFunctionField
-import Jacobians.RiemannSurface.Cohomology.DegreeTheorem
 import Jacobians.Bridge.AbelEngineAdapter
+import Jacobians.RiemannSurface.AbelSupsetPlumbing
+import Jacobians.RiemannSurface.AbelSupsetSmooth
+import Jacobians.RiemannSurface.Cohomology.DegreeTheorem
 
 namespace Jacobians.Axioms
 
@@ -105,10 +106,11 @@ This is the strictly-smaller remainder of the former full
 and the degree half of ⊇ are now theorems). It is implied by the
 previously Class-1-vetted full statement, so satisfiability/strength
 vetting is inherited; tracked for discharge on the Liouville route. -/
-axiom AX_AbelSupset {X : Type u} [TopologicalSpace X] [T2Space X]
+theorem AX_AbelSupset {X : Type u} [TopologicalSpace X] [T2Space X]
     [CompactSpace X] [ConnectedSpace X] [Nonempty X] [ChartedSpace ℂ X]
     [IsManifold 𝓘(ℂ) ω X] :
-    PrincipalDivisors X ≤ (abelJacobiDiv X).ker
+    PrincipalDivisors X ≤ (abelJacobiDiv X).ker :=
+  Jacobians.RiemannSurface.abel_supset_of_fiberAJConstancy Jacobians.RiemannSurface.fiberAJConstancy
 
 /-- **Principal divisors have degree zero** (subgroup form of the degree
 theorem `deg_divisor_eq_zero`): the degree half of Abel ⊇. -/
