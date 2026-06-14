@@ -334,17 +334,71 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
         ((extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm z)) *
         (fderiv ℂ ((extChartAt 𝓘(ℂ, ℂ) (a : HyperellipticOdd H h)) ∘
           (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm) z 1) := by
-  -- Reduce extChartAt to concrete charts
-  -- extChartAt infty has target = (infinityChart H h).target
-  -- extChartAt (coe a) has target = (affineLiftChart a).target
-  -- The infinity coefficient at z is hyperellipticOddCoeff g infty z
-  -- The affine coefficient at the transition point is
-  --   hyperellipticAffineCoeff g a (transition(z))
-  -- The cocycle equation relates these via the chart transition derivative
-  -- z ∈ infinityChart.target means z ≠ 0 (since ∞ maps to 0)
-  -- and the transition formula depends on whether a ∈ smoothLocusY
-  -- (projX chart: t ↦ w(t)⁻²) or a ∈ smoothLocusX (projY chart)
-  sorry
+  -- Step 1: Reduce extChartAt to concrete charts
+  -- extChartAt infty = infinityChart (by Set.univ_inter)
+  -- extChartAt (coe a) = affineLiftChart a (by Set.univ_inter)
+  -- hyperellipticOddCoeff g (coe a) = hyperellipticAffineCoeff g a (by rfl)
+  -- Step 2: Case split on a ∈ smoothLocusY
+  by_cases hpY : a ∈ HyperellipticAffine.smoothLocusY H
+  · -- Case: a ∈ smoothLocusY (projX chart, transition z ↦ w(z)⁻²)
+    -- Step 1: Rewrite affine coefficient
+    -- hyperellipticOddCoeff g (coe a) = hyperellipticAffineCoeff g a
+    have hCoeffEq : hyperellipticOddCoeff (h := h) g (coe a) =
+        HyperellipticAffine.hyperellipticAffineCoeff g a := rfl
+    rw [hCoeffEq]
+    -- Step 2: Identify affineLiftChart with projX lift
+    have hchart :
+        (ChartedSpace.chartAt a :
+          OpenPartialHomeomorph (HyperellipticAffine H) ℂ) =
+          HyperellipticAffine.affineChartProjX (H := H) a hpY := by
+      change HyperellipticAffine.affineChartAt (H := H) a =
+        HyperellipticAffine.affineChartProjX (H := H) a hpY
+      simp [HyperellipticAffine.affineChartAt, hpY]
+    -- Step 3: Compute the transition value
+    -- The transition infinityChart.symm ≫ affineLiftChart a
+    -- equals infinityChart.symm ≫ (affineChartProjX a hpY).lift coe
+    -- and its value at z is (tLocalHomeomorph.symm z)⁻¹ ^ 2
+    -- But first, show z is in the transition source
+    have hzt : z ∈ (infinityChart H h).target := by
+      have : (extChartAt 𝓘(ℂ, ℂ)
+        (infty : HyperellipticOdd H h)).target =
+          (infinityChart H h).target := by
+        change Set.univ ∩ (ChartedSpace.chartAt
+          (infty : HyperellipticOdd H h)).target = _
+        rw [Set.univ_inter]; rfl
+      rwa [← this]
+    -- Show z ≠ 0 (z = 0 corresponds to ∞ which is not in the
+    -- affine chart source, contradicting hsrc)
+    have hzne : z ≠ 0 := by
+      intro hc
+      rw [hc] at hsrc
+      -- infinityChart.symm 0 = ∞, which is not in any affine source
+      have : (extChartAt 𝓘(ℂ, ℂ)
+        (infty : HyperellipticOdd H h)).symm 0 =
+          (infinityChart H h).symm 0 := rfl
+      rw [this] at hsrc
+      have hinf : (infinityChart H h).symm 0 =
+        (infty : HyperellipticOdd H h) := by
+        simp [infinityChart, infinityBackward, infty]
+      rw [hinf] at hsrc
+      -- ∞ ∈ (extChartAt (coe a)).source is impossible
+      rw [extChartAt_source] at hsrc
+      have : (infty : HyperellipticOdd H h) ∈
+          (affineLiftChart (h := h) a).source := hsrc
+      rw [affineLiftChart_source] at this
+      obtain ⟨q, _, heq⟩ := this
+      exact OnePoint.infty_notMem_range_coe ⟨q, heq⟩
+    -- Step 4: Compute the transition value
+    -- The value is (tLocalHomeomorph.symm z)⁻¹ ^ 2
+    -- For the algebraic identity + derivative, sorry for now
+    sorry
+  · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
+    have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
+      HyperellipticAffine.mem_smoothLocusX_of_y_eq_zero H
+        (by simpa [HyperellipticAffine.smoothLocusY] using hpY)
+    -- affineLiftChart a = (affineChartProjY a hpX).lift coe
+    -- transition formula: infinityChart_trans_affineLiftProjY_apply
+    sorry
 
 theorem hyperellipticOddCoeff_satisfiesCotangentCocycle
     (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
