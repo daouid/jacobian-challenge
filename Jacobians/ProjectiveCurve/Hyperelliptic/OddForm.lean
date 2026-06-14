@@ -388,9 +388,76 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
       rw [affineLiftChart_source] at this
       obtain ⟨q, _, heq⟩ := this
       exact OnePoint.infty_notMem_range_coe ⟨q, heq⟩
-    -- Step 4: Compute the transition value
-    -- The value is (tLocalHomeomorph.symm z)⁻¹ ^ 2
-    -- For the algebraic identity + derivative, sorry for now
+    -- Step 4: Compute the transition value and the derivative
+    -- Key: extChartAt (coe a) ∘ extChartAt infty.symm
+    -- = affineLiftChart a ∘ infinityChart.symm
+    -- = (affineChartProjX a hpY).lift coe ∘ infinityChart.symm (by hchart)
+    -- By infinityChart_trans_affineLiftProjX_apply:
+    --   transition(z) = w(z)⁻²
+    -- where w = tLocalHomeomorph.symm z
+    --
+    -- Set w := tLocalHomeomorph.symm z
+    let w := (InfinityInverse.tLocalHomeomorph H).symm z
+    -- Show z ∈ tLocalHomeomorph.target
+    have hzt_tLH : z ∈ (InfinityInverse.tLocalHomeomorph H).target := hzt
+    -- Identify affineLiftChart a with projXLift
+    have hLiftEq : affineLiftChart (h := h) a =
+        (HyperellipticAffine.affineChartProjX (H := H)
+          a hpY).lift_openEmbedding
+            (OnePoint.isOpenEmbedding_coe
+              (X := HyperellipticAffine H)) := by
+      unfold affineLiftChart; congr 1
+    -- Show the transition source membership
+    have hTransSrc : z ∈ ((infinityChart H h).toPartialEquiv.symm.trans
+        ((HyperellipticAffine.affineChartProjX (H := H) a hpY).lift_openEmbedding
+          (OnePoint.isOpenEmbedding_coe
+            (X := HyperellipticAffine H))).toPartialEquiv).source := by
+      refine ⟨hzt, ?_⟩
+      change (infinityChart H h).symm z ∈
+        ((HyperellipticAffine.affineChartProjX (H := H) a hpY).lift_openEmbedding
+          (OnePoint.isOpenEmbedding_coe
+            (X := HyperellipticAffine H))).source
+      have hSrcEq : (extChartAt 𝓘(ℂ, ℂ)
+          (coe a : HyperellipticOdd H h)).source =
+          (affineLiftChart (h := h) a).source := by
+        rw [extChartAt_source]; rfl
+      rw [← hLiftEq, ← hSrcEq]
+      exact hsrc
+    -- Step 4: Compute the extChartAt transition value
+    have hExtApp : (extChartAt 𝓘(ℂ, ℂ)
+        (coe a : HyperellipticOdd H h))
+        ((extChartAt 𝓘(ℂ, ℂ)
+          (infty : HyperellipticOdd H h)).symm z) =
+          w⁻¹ ^ 2 := by
+      -- extChartAt over 𝓘(ℂ,ℂ) is definitionally the chart map
+      conv_lhs =>
+        rw [show (↑(extChartAt 𝓘(ℂ, ℂ)
+          (coe a : HyperellipticOdd H h)) :
+            HyperellipticOdd H h → ℂ) =
+          ↑(affineLiftChart (h := h) a) from rfl]
+        rw [show (↑(extChartAt 𝓘(ℂ, ℂ)
+          (infty : HyperellipticOdd H h)).symm :
+            ℂ → HyperellipticOdd H h) =
+          ↑(infinityChart H h).symm from rfl]
+      -- conv rewrites gave ↑(affineLiftChart a) (↑(infinityChart.symm) z)
+      -- = ↑(projXLift) (↑(infinityChart.symm) z)
+      -- = ↑(infinityChart.symm ≫ₕ projXLift) z (by trans_apply)
+      -- = w⁻¹ ^ 2 (by infinityChart_trans_affineLiftProjX_apply)
+      have h1 : (affineLiftChart (h := h) a :
+          OpenPartialHomeomorph (HyperellipticOdd H h) ℂ) =
+        ((HyperellipticAffine.affineChartProjX (H := H)
+          a hpY).lift_openEmbedding
+            (OnePoint.isOpenEmbedding_coe
+              (X := HyperellipticAffine H))) := hLiftEq
+      rw [h1]
+      exact infinityChart_trans_affineLiftProjX_apply
+        a hpY hTransSrc
+    rw [hExtApp]
+    -- Now the goal has concrete transition value w⁻¹ ^ 2:
+    -- hyperellipticOddCoeff g infty z =
+    --   hyperellipticAffineCoeff g a (w⁻¹ ^ 2) *
+    --     fderiv(extChartAt(coe a) ∘ extChartAt(infty).symm)(z)(1)
+    -- Remaining: unfold both coefficients + compute the derivative
     sorry
   · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
     have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
