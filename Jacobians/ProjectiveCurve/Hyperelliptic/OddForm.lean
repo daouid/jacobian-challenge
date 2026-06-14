@@ -405,9 +405,27 @@ theorem infinity_transition_deriv_identity
     (InfinityInverse.tLocalHomeomorph H).hasDerivAt_symm
       hzt ht_deriv_ne ht_hda_lh
   -- Step 6: Chain rule for z ↦ (tLH.symm z)⁻¹ ^ 2
-  -- = (h ∘ g)(z) where g = tLH.symm, h = (·)⁻¹ ^ 2
-  -- h'(w) = -2w⁻³ (derivative of w⁻²)
-  -- (h ∘ g)'(z) = h'(g(z)) * g'(z) = -2w⁻³ / t'(w)
+  -- deriv = deriv(u ↦ u⁻¹^2)(w) * (t'(w))⁻¹ = (-2w⁻³) / t'(w)
+  have hinv_sq_deriv : HasDerivAt
+      (fun u : ℂ => u⁻¹ ^ 2) (-2 * w ^ (-3 : ℤ)) w := by
+    have h1 : HasDerivAt Inv.inv (-(w ^ 2)⁻¹) w :=
+      hasDerivAt_inv hw_ne
+    have h2 : HasDerivAt (· ^ 2) (2 * w⁻¹) (w⁻¹) := by
+      have := hasDerivAt_pow 2 (w⁻¹)
+      simp at this; exact this
+    have h3 := h2.comp w h1
+    convert h3 using 1
+    field_simp
+  have hcomp : HasDerivAt
+      (fun z =>
+        ((InfinityInverse.tLocalHomeomorph H).symm z)⁻¹ ^ 2)
+      ((-2 * w ^ (-3 : ℤ)) *
+        (deriv (InfinityInverse.t H) w)⁻¹) z := by
+    convert hinv_sq_deriv.comp z hw_hda_symm using 1
+  rw [hcomp.deriv]
+  -- Now need: (-2 * w^(-3)) * (t'(w))⁻¹ = RHS
+  -- This is the core algebraic identity relating
+  -- deriv(t)(w) to f, f', and the square root branch
   sorry
 
 theorem hyperellipticOddCoeff_analyticOn_infinityChart
