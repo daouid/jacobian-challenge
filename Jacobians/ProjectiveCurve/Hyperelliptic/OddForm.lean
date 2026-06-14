@@ -457,7 +457,23 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
     -- hyperellipticOddCoeff g infty z =
     --   hyperellipticAffineCoeff g a (w⁻¹ ^ 2) *
     --     fderiv(extChartAt(coe a) ∘ extChartAt(infty).symm)(z)(1)
-    -- Remaining: unfold both coefficients + compute the derivative
+    -- Step 5: Unfold the LHS at z ≠ 0
+    have hLHS : hyperellipticOddCoeff (h := h) g infty z =
+        let x := (infinityInverseMap H h z).val.1
+        2 * g.eval x * x ^ (H.genus + 2) /
+          (x * (Polynomial.derivative H.f).eval x -
+            (2 * H.genus + 2) * H.f.eval x) := by
+      unfold hyperellipticOddCoeff
+      dsimp [infty]
+      simp only [hzt, hzne, if_pos, if_neg, not_false_eq_true]
+    rw [hLHS]
+    -- Now the goal is:
+    -- 2 * g.eval(x) * x^(g+2) /
+    --   (x * f'(x) - (2g+2) * f(x)) =
+    --   hyperellipticAffineCoeff g a (w⁻¹ ^ 2) *
+    --     fderiv(transition)(z)(1)
+    -- where x = (infinityInverseMap H h z).val.1 = w⁻²
+    -- Remaining: unfold RHS + fderiv + algebraic identity
     sorry
   · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
     have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
