@@ -380,7 +380,24 @@ theorem infinity_transition_deriv_identity
   -- deriv(t)(w) ≠ 0 (since tLH is a local homeomorph)
   have ht_deriv_ne :
       deriv (InfinityInverse.t H) w ≠ 0 := by
-    sorry -- Follows from tLH being a local homeo at w
+    intro h_zero
+    -- t ∘ tLH.symm =ᶠ[nhds z] id near z
+    have h_ev : ↑(InfinityInverse.tLocalHomeomorph H) ∘
+        ↑(InfinityInverse.tLocalHomeomorph H).symm
+        =ᶠ[nhds z] id := by
+      rw [Filter.EventuallyEq]
+      exact Filter.eventually_of_mem
+        ((InfinityInverse.tLocalHomeomorph H).open_target.mem_nhds
+          hzt) fun x hx => by
+        simp [(InfinityInverse.tLocalHomeomorph H).right_inv hx]
+    -- HasDerivAt t 0 w (since h_zero says deriv = 0)
+    have ht_hda_zero : HasDerivAt
+        ↑(InfinityInverse.tLocalHomeomorph H) 0 w := by
+      rw [← h_zero]; exact ht_hda_lh
+    -- Apply the key Mathlib lemma
+    exact absurd hw_diff
+      (not_differentiableAt_of_local_left_inverse_hasDerivAt_zero
+        ht_hda_zero h_ev)
   -- Step 5: HasDerivAt for tLH.symm via IFT
   have hw_hda_symm : HasDerivAt
       (↑(InfinityInverse.tLocalHomeomorph H).symm)
