@@ -334,6 +334,16 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
         ((extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm z)) *
         (fderiv ℂ ((extChartAt 𝓘(ℂ, ℂ) (a : HyperellipticOdd H h)) ∘
           (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm) z 1) := by
+  -- Reduce extChartAt to concrete charts
+  -- extChartAt infty has target = (infinityChart H h).target
+  -- extChartAt (coe a) has target = (affineLiftChart a).target
+  -- The infinity coefficient at z is hyperellipticOddCoeff g infty z
+  -- The affine coefficient at the transition point is
+  --   hyperellipticAffineCoeff g a (transition(z))
+  -- The cocycle equation relates these via the chart transition derivative
+  -- z ∈ infinityChart.target means z ≠ 0 (since ∞ maps to 0)
+  -- and the transition formula depends on whether a ∈ smoothLocusY
+  -- (projX chart: t ↦ w(t)⁻²) or a ∈ smoothLocusX (projY chart)
   sorry
 
 theorem hyperellipticOddCoeff_satisfiesCotangentCocycle
