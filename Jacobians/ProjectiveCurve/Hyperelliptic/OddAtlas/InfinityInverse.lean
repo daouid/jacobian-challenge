@@ -56,8 +56,32 @@ lemma S_analyticAt (H : HyperellipticData) : AnalyticAt ℂ (S H) 0 := by
     h_pow.const_smul (c := Complex.sqrt H.f.leadingCoeff)
   exact h_S
 
+/-- `S(z)² = f.reverse.eval z`.
+The Puiseux series `S` satisfies `S(z)² = P(z) = f_reverse(z)`,
+which follows from `sqrt(lc)² = lc` and `(x^(2⁻¹))² = x`. -/
+lemma S_sq (H : HyperellipticData) (z : ℂ) :
+    S H z ^ 2 = H.f.reverse.eval z := by
+  unfold S
+  rw [smul_eq_mul, mul_pow]
+  -- sqrt(lc)^2 = lc
+  have h_lc : Complex.sqrt H.f.leadingCoeff ^ 2 =
+      H.f.leadingCoeff := by
+    simp [Complex.sqrt]
+  rw [h_lc]
+  -- (lc⁻¹ • f_rev(z))^(2⁻¹) ^ 2 = lc⁻¹ • f_rev(z)
+  rw [smul_eq_mul, Complex.cpow_ofNat_inv_pow]
+  -- lc * (lc⁻¹ * f_rev(z)) = f_rev(z)
+  have h_lc_ne := leadingCoeff_ne_zero H
+  field_simp [h_lc_ne]
+
 noncomputable def t (H : HyperellipticData) (w : ℂ) : ℂ :=
   w * S H (w ^ 2)
+
+/-- `t(w)² = w² · f.reverse.eval(w²)`. -/
+lemma t_sq (H : HyperellipticData) (w : ℂ) :
+    t H w ^ 2 = w ^ 2 * H.f.reverse.eval (w ^ 2) := by
+  unfold t
+  rw [mul_pow, S_sq]
 
 lemma t_analyticAt (H : HyperellipticData) : AnalyticAt ℂ (t H) 0 := by
   have h_id : AnalyticAt ℂ (fun w : ℂ => w) 0 :=
