@@ -626,12 +626,93 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
       eval x g * x ^ 2 * x ^ H.genus *
         D⁻¹ * (y * y⁻¹) * 2 from by ring]
     rw [mul_inv_cancel₀ hyNZ, mul_one]
-  · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
+  · -- Case: a ∉ smoothLocusY (projY chart)
     have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
       HyperellipticAffine.mem_smoothLocusX_of_y_eq_zero H
-        (by simpa [HyperellipticAffine.smoothLocusY] using hpY)
-    -- affineLiftChart a = (affineChartProjY a hpX).lift coe
-    -- transition formula: infinityChart_trans_affineLiftProjY_apply
+        (by simpa [HyperellipticAffine.smoothLocusY]
+          using hpY)
+    -- Step 1: Chart identification
+    have hchart : ChartedSpace.chartAt a =
+        HyperellipticAffine.affineChartProjY (H := H)
+          a hpX :=
+      HyperellipticAffine.affineChartAt_of_not_mem_smoothLocusY
+        (H := H) a hpY
+    -- Step 2: z ∈ infinityChart.target
+    have hzt : z ∈ (infinityChart H h).target := by
+      have : (extChartAt 𝓘(ℂ, ℂ)
+        (infty : HyperellipticOdd H h)).target =
+          (infinityChart H h).target := by
+        change Set.univ ∩ (ChartedSpace.chartAt
+          (infty : HyperellipticOdd H h)).target = _
+        rw [Set.univ_inter]; rfl
+      rwa [← this]
+    -- Step 3: z ≠ 0
+    have hzne : z ≠ 0 := by
+      intro hc; rw [hc] at hsrc
+      have : (extChartAt 𝓘(ℂ, ℂ)
+        (infty : HyperellipticOdd H h)).symm 0 =
+          (infinityChart H h).symm 0 := rfl
+      rw [this] at hsrc
+      have hinf : (infinityChart H h).symm 0 =
+        (infty : HyperellipticOdd H h) := by
+        simp [infinityChart, infinityBackward, infty]
+      rw [hinf] at hsrc
+      rw [extChartAt_source] at hsrc
+      have : (infty : HyperellipticOdd H h) ∈
+          (affineLiftChart (h := h) a).source := hsrc
+      rw [affineLiftChart_source] at this
+      obtain ⟨q, _, heq⟩ := this
+      exact OnePoint.infty_notMem_range_coe ⟨q, heq⟩
+    let w := (InfinityInverse.tLocalHomeomorph H).symm z
+    have hzt_tLH :
+        z ∈ (InfinityInverse.tLocalHomeomorph H).target :=
+      hzt
+    -- Step 4: affineLiftChart = projYLift
+    have hLiftEq : affineLiftChart (h := h) a =
+        (HyperellipticAffine.affineChartProjY (H := H)
+          a hpX).lift_openEmbedding
+            (OnePoint.isOpenEmbedding_coe
+              (X := HyperellipticAffine H)) := by
+      unfold affineLiftChart; rw [hchart]; rfl
+    -- Step 5: Transition source membership
+    have hTransSrc :
+        z ∈ ((infinityChart H h).symm.trans
+          ((HyperellipticAffine.affineChartProjY (H := H)
+            a hpX).lift_openEmbedding
+              (OnePoint.isOpenEmbedding_coe
+                (X := HyperellipticAffine H)))).source := by
+      constructor
+      · exact hzt
+      · have : (extChartAt 𝓘(ℂ, ℂ)
+            (infty : HyperellipticOdd H h)).symm z ∈
+            (affineLiftChart (h := h) a).source := by
+          have := hsrc
+          rwa [extChartAt_source] at this
+        rw [hLiftEq] at this
+        rw [Set.mem_preimage]
+        convert this
+    -- Step 6: Compute transition value
+    -- For projY: transition is z ↦ z * (w⁻¹ ^ 2)^(g+1)
+    have hExtApp :
+        (extChartAt 𝓘(ℂ, ℂ)
+          (coe a : HyperellipticOdd H h))
+          ((extChartAt 𝓘(ℂ, ℂ)
+            (infty : HyperellipticOdd H h)).symm z) =
+          z * (w⁻¹ ^ 2) ^ (H.genus + 1) := by
+      conv_lhs =>
+        rw [show (↑(extChartAt 𝓘(ℂ, ℂ)
+          (coe a : HyperellipticOdd H h)) :
+            HyperellipticOdd H h → ℂ) =
+          ↑(affineLiftChart (h := h) a) from rfl]
+        rw [show (↑(extChartAt 𝓘(ℂ, ℂ)
+          (infty : HyperellipticOdd H h)).symm :
+            ℂ → HyperellipticOdd H h) =
+          ↑(infinityChart H h).symm from rfl]
+      rw [hLiftEq]
+      exact infinityChart_trans_affineLiftProjY_apply
+        a hpX hTransSrc
+    rw [hExtApp]
+    -- The remaining algebraic identity for the projY case
     sorry
 
 theorem hyperellipticOddCoeff_satisfiesCotangentCocycle
