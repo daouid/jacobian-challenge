@@ -341,6 +341,56 @@ theorem infinity_transition_deriv_identity
         (Polynomial.derivative H.f).eval (w⁻¹ ^ 2) -
         (2 * H.genus + 2) *
           H.f.eval (w⁻¹ ^ 2)) := by
+  -- Convert fderiv to deriv (since we're in 1d ℂ → ℂ)
+  simp only [fderiv_deriv]
+  let w := (InfinityInverse.tLocalHomeomorph H).symm z
+  -- Step 1: w is differentiable at z (from ContDiffOn ω of tLH.symm)
+  have hw_diff : DifferentiableAt ℂ
+      (InfinityInverse.tLocalHomeomorph H).symm z := by
+    exact ((tLocalHomeomorph_symm_contDiffOn H).differentiableOn
+      (hn := by simp [WithTop.top_ne_zero])).differentiableAt
+      ((InfinityInverse.tLocalHomeomorph H).open_target.mem_nhds
+        hzt)
+  -- Step 2: w ≠ 0 (since t(0) = 0 and z ≠ 0)
+  have hw_ne : w ≠ 0 := by
+    intro hc
+    have h_lv :=
+      (InfinityInverse.tLocalHomeomorph H).right_inv hzt
+    rw [show (InfinityInverse.tLocalHomeomorph H).symm z = w
+      from rfl, hc] at h_lv
+    rw [InfinityInverse.tLocalHomeomorph_coe H] at h_lv
+    simp [InfinityInverse.t, InfinityInverse.S] at h_lv
+    exact hzne h_lv.symm
+  -- Step 3: w ∈ tLH.source, t is analytic at w
+  have hw_source :
+      w ∈ (InfinityInverse.tLocalHomeomorph H).source :=
+    (InfinityInverse.tLocalHomeomorph H).map_target hzt
+  have hw_US : w ∈ InfinityInverse.U_S H := hw_source.2
+  have ht_ana : AnalyticAt ℂ (InfinityInverse.t H) w :=
+    InfinityInverse.t_analyticAt_of_mem H hw_US
+  -- Step 4: t has a derivative at w, and it's nonzero
+  have ht_hda : HasDerivAt (InfinityInverse.t H)
+      (deriv (InfinityInverse.t H) w) w :=
+    ht_ana.differentiableAt.hasDerivAt
+  -- Lift to tLocalHomeomorph
+  have ht_hda_lh : HasDerivAt
+      (InfinityInverse.tLocalHomeomorph H)
+      (deriv (InfinityInverse.t H) w) w := by
+    rwa [← InfinityInverse.tLocalHomeomorph_coe H]
+  -- deriv(t)(w) ≠ 0 (since tLH is a local homeomorph)
+  have ht_deriv_ne :
+      deriv (InfinityInverse.t H) w ≠ 0 := by
+    sorry -- Follows from tLH being a local homeo at w
+  -- Step 5: HasDerivAt for tLH.symm via IFT
+  have hw_hda_symm : HasDerivAt
+      (↑(InfinityInverse.tLocalHomeomorph H).symm)
+      (deriv (InfinityInverse.t H) w)⁻¹ z :=
+    (InfinityInverse.tLocalHomeomorph H).hasDerivAt_symm
+      hzt ht_deriv_ne ht_hda_lh
+  -- Step 6: Chain rule for z ↦ (tLH.symm z)⁻¹ ^ 2
+  -- = (h ∘ g)(z) where g = tLH.symm, h = (·)⁻¹ ^ 2
+  -- h'(w) = -2w⁻³ (derivative of w⁻²)
+  -- (h ∘ g)'(z) = h'(g(z)) * g'(z) = -2w⁻³ / t'(w)
   sorry
 
 theorem hyperellipticOddCoeff_analyticOn_infinityChart
