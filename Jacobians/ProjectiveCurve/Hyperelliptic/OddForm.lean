@@ -296,6 +296,53 @@ lemma x_fderiv_sub_f_eq {H : HyperellipticData} (hOdd : Odd H.f.natDegree) (W : 
   rw [eval_add, eval_mul, eval_X]
   ring
 
+/-- **Key identity for the infinity-to-affine cocycle**.
+
+At a point `z ≠ 0` in the infinity chart target, the derivative of the
+chart transition `z ↦ w(z)⁻¹ ^ 2` (where `w = tLocalHomeomorph.symm z`)
+satisfies:
+```
+fderiv(z ↦ w(z)⁻²)(z)(1) =
+  2 * (w⁻²)^(g+2) * y / (w⁻² * f'(w⁻²) - (2g+2) * f(w⁻²))
+```
+where `y = squareLocalHomeomorph.symm(f.eval(w⁻²))` is the y-branch.
+
+Mathematically this is the identity `dx/dt = 2x^(g+2) * y / (x*f'(x) - (2g+2)*f(x))`
+at infinity, where `t` is the uniformizer `y/x^(g+1)` and `x = w⁻²`.
+
+Proof requires:
+1. `HasDerivAt` for `tLocalHomeomorph.symm` at `z` via the IFT
+2. Chain rule for `z ↦ w(z)⁻¹ ^ 2 = w(z)⁻²`
+3. The relationship `t'(w) = S(w²) + 2w²S'(w²)` from the
+   definition `t(w) = w * S(w²)`
+4. Connection between `S(w²)` and the square root branch `y`
+-/
+theorem infinity_transition_deriv_identity
+    (a : HyperellipticAffine H)
+    (hpY : a ∈ HyperellipticAffine.smoothLocusY H)
+    {z : ℂ}
+    (hzt : z ∈ (InfinityInverse.tLocalHomeomorph H).target)
+    (hzne : z ≠ 0)
+    (hInTarget : ((InfinityInverse.tLocalHomeomorph H).symm
+      z)⁻¹ ^ 2 ∈
+        ((HyperellipticAffine.affineChartProjX (H := H)
+          a hpY) :
+            OpenPartialHomeomorph
+              (HyperellipticAffine H) ℂ).target) :
+    let w := (InfinityInverse.tLocalHomeomorph H).symm z
+    (fderiv ℂ
+      (fun z => ((InfinityInverse.tLocalHomeomorph H).symm
+        z)⁻¹ ^ 2) z) 1 =
+    2 * (w⁻¹ ^ 2) ^ (H.genus + 2) *
+      ((HyperellipticAffine.squareLocalHomeomorph
+          (H := H) a hpY).symm
+        (H.f.eval (w⁻¹ ^ 2))) /
+      (w⁻¹ ^ 2 *
+        (Polynomial.derivative H.f).eval (w⁻¹ ^ 2) -
+        (2 * H.genus + 2) *
+          H.f.eval (w⁻¹ ^ 2)) := by
+  sorry
+
 theorem hyperellipticOddCoeff_analyticOn_infinityChart
     (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
     AnalyticOn ℂ (hyperellipticOddCoeff (h := h) g (infty : HyperellipticOdd H h))
@@ -517,11 +564,68 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
     -- Step 8: Unfold affineProjXCoeff to explicit formula
     rw [HyperellipticAffine.affineProjXCoeff_eq_on_target
       g a hpY hInTarget]
-    -- Goal now:
-    -- 2 * g.eval(w⁻²) * (w⁻²)^(g+2) /
-    --   (w⁻² * f'(w⁻²) - (2g+2) * f(w⁻²)) =
-    --   (g.eval(w⁻²) / √_a(f(w⁻²))) * fderiv(transition)(z)(1)
-    sorry
+    -- Step 9: Compute the fderiv
+    -- Use Filter.EventuallyEq.fderiv_eq to replace the chart
+    -- composition with z → w(z)⁻¹ ^ 2
+    have hOverlapOpen :
+        IsOpen ((infinityChart H h).symm.trans
+          ((HyperellipticAffine.affineChartProjX (H := H)
+            a hpY).lift_openEmbedding
+              (OnePoint.isOpenEmbedding_coe
+                (X := HyperellipticAffine H)))).source :=
+      ((infinityChart H h).symm.trans _).open_source
+    have hEqNear : (↑(extChartAt 𝓘(ℂ, ℂ)
+        (coe a : HyperellipticOdd H h)) ∘
+        ↑(extChartAt 𝓘(ℂ, ℂ)
+          (infty : HyperellipticOdd H h)).symm) =ᶠ[nhds z]
+      (fun z => ((InfinityInverse.tLocalHomeomorph H).symm
+        z)⁻¹ ^ 2) := by
+      refine Filter.eventually_of_mem
+        (hOverlapOpen.mem_nhds hTransSrc) ?_
+      intro u hu
+      -- For u in the overlap, the chart composition equals
+      -- the transition formula
+      conv_lhs =>
+        rw [show (↑(extChartAt 𝓘(ℂ, ℂ)
+          (coe a : HyperellipticOdd H h)) :
+            HyperellipticOdd H h → ℂ) =
+          ↑(affineLiftChart (h := h) a) from rfl]
+        rw [show (↑(extChartAt 𝓘(ℂ, ℂ)
+          (infty : HyperellipticOdd H h)).symm :
+            ℂ → HyperellipticOdd H h) =
+          ↑(infinityChart H h).symm from rfl]
+      rw [hLiftEq]
+      exact infinityChart_trans_affineLiftProjX_apply
+        a hpY hu
+    rw [Filter.EventuallyEq.fderiv_eq hEqNear]
+    -- Now the fderiv is of z → w(z)⁻¹ ^ 2
+    -- Apply infinity_transition_deriv_identity to get the
+    -- explicit derivative value
+    rw [infinity_transition_deriv_identity a hpY
+      hzt_tLH hzne hInTarget]
+    -- Goal is now:
+    -- 2 * g(w⁻²) * (w⁻²)^(g+2) / denom =
+    --   g(w⁻²) / y * (2 * (w⁻²)^(g+2) * y / denom)
+    -- where y = squareLocalHomeomorph.symm(f(w⁻²))
+    -- This is a pure algebraic identity: cancel g(w⁻²)
+    -- and y from both sides
+    set x := w⁻¹ ^ 2
+    set y := ((HyperellipticAffine.squareLocalHomeomorph
+        (H := H) a hpY).symm
+      (H.f.eval x))
+    set D := x * (Polynomial.derivative H.f).eval x -
+      (2 * ↑H.genus + 2) * H.f.eval x
+    -- Goal: 2 * g(x) * x^(g+2) / D =
+    --       g(x) / y * (2 * x^(g+2) * y / D)
+    have hyNZ : y ≠ 0 :=
+      HyperellipticAffine.squareLocalHomeomorph_symm_ne_zero
+        a hpY hInTarget
+    ring_nf
+    rw [show eval x g * x ^ 2 * x ^ H.genus *
+        D⁻¹ * y * y⁻¹ * 2 =
+      eval x g * x ^ 2 * x ^ H.genus *
+        D⁻¹ * (y * y⁻¹) * 2 from by ring]
+    rw [mul_inv_cancel₀ hyNZ, mul_one]
   · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
     have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
       HyperellipticAffine.mem_smoothLocusX_of_y_eq_zero H
