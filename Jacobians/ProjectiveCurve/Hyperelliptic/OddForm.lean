@@ -473,6 +473,28 @@ theorem infinity_transition_deriv_identity
       convert hlhs using 1
       ext u; exact (h_eq u).symm
     exact hlhs'.unique hrhs_hda
+  -- Step 8: Branch agreement
+  -- Need: sqLH.symm(f(x)) = z * x^(g+1)
+  -- Both sides square to f(x), and they agree because
+  -- both are the y-coordinate of the same point on the curve
+  -- viewed through the chart compatibility.
+  -- Proof: (affineChartProjX.symm(x)).val.2 = sqLH.symm(f(x))
+  --        (infinityInverseMap z).val.2 = z * x^(g+1)
+  --        These are the same point by chart compatibility.
+  have hBranch : (a.squareLocalHomeomorph hpY).symm
+      (H.f.eval (w⁻¹ ^ 2)) = z * (w⁻¹ ^ 2) ^ (H.genus + 1) := by
+    have hq_snd :=
+      HyperellipticAffine.affineChartProjX_symm_apply_snd
+        a hpY hInTarget
+    rw [← hq_snd]
+    -- Goal: (affineChartProjX.symm(w⁻¹^2)).val.2 = z * (w⁻¹^2)^(g+1)
+    -- Both are y-coordinates of the same point on the curve,
+    -- identified via the infinity-to-affine chart transition.
+    -- This requires showing infinityInverseMap z ∈ source,
+    -- which needs the chart overlap membership from the caller.
+    sorry
+  -- Now use hBranch, hderivs_eq, and x_fderiv_sub_f_eq
+  -- to close the algebraic identity
   sorry
 
 theorem hyperellipticOddCoeff_analyticOn_infinityChart
