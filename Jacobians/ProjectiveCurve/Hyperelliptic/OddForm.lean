@@ -3,6 +3,7 @@ import Jacobians.ProjectiveCurve.Hyperelliptic.OddAtlas
 import Jacobians.ProjectiveCurve.Hyperelliptic.AffineForm
 import Jacobians.RiemannSurface.OneForm
 import Jacobians.Bridge.KirovHolomorphic
+import Jacobians.GeneralResults.ChartTransition
 
 namespace Jacobians.ProjectiveCurve.HyperellipticOdd
 
@@ -339,7 +340,85 @@ theorem hyperellipticOddCoeff_satisfiesCotangentCocycle
     (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
     SatisfiesCotangentCocycle (HyperellipticOdd H h)
       (hyperellipticOddCoeff (H := H) (h := h) g) := by
-  sorry
+  intro x y z hz hSrc
+  induction x using HyperellipticOdd.rec with
+  | infty_val =>
+    induction y using HyperellipticOdd.rec with
+    | infty_val =>
+      -- (infty, infty): same chart, transition is identity
+      have hRightInv : (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h))
+          ((extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm z) = z :=
+        (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).right_inv hz
+      rw [hRightInv]
+      have hEv : ∀ᶠ w in nhds z,
+          ((extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)) ∘
+            (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm) w = id w :=
+        Filter.eventually_of_mem (extChartAt_target_mem_nhds' hz) fun w hw => by
+          simp only [Function.comp_apply, id]
+          exact (extChartAt 𝓘(ℂ, ℂ)
+            (infty : HyperellipticOdd H h)).right_inv hw
+      rw [Filter.EventuallyEq.fderiv_eq hEv, fderiv_id,
+          ContinuousLinearMap.id_apply, mul_one]
+    | coe_val a =>
+      exact hyperellipticOddCoeff_cocycle_infty_coe g a hz hSrc
+  | coe_val p =>
+    induction y using HyperellipticOdd.rec with
+    | infty_val =>
+      -- (coe p, infty): derived from (infty, coe p)
+      -- via transition_fderiv_mul
+      let φp := extChartAt 𝓘(ℂ, ℂ) (coe p : HyperellipticOdd H h)
+      let φi := extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)
+      let w := φi (φp.symm z)
+      have hwt : w ∈ φi.target := φi.map_source hSrc
+      have hws : φi.symm w ∈ φp.source := by
+        change φi.symm (φi (φp.symm z)) ∈ φp.source
+        rw [φi.left_inv hSrc]
+        exact φp.map_target hz
+      -- apply (infty, coe p) at (φi, φp, w)
+      have hfwd := hyperellipticOddCoeff_cocycle_infty_coe
+        g p hwt hws
+      -- simplify φp (φi.symm w) = z in hfwd
+      have hw_simp : φp (φi.symm w) = z := by
+        change φp (φi.symm (φi (φp.symm z))) = z
+        rw [φi.left_inv hSrc, φp.right_inv hz]
+      rw [hw_simp] at hfwd
+      -- hfwd: coeff infty w = coeff (coe p) z * D_bwd
+      -- htfm: D_fwd * D_bwd = 1
+      have htfm :=
+        Jacobians.GeneralResults.transition_fderiv_mul
+          (coe p : HyperellipticOdd H h)
+          (infty : HyperellipticOdd H h) hz hSrc
+      -- The goal is: coeff (coe p) z = coeff infty w * D_fwd
+      -- We have: coeff infty w = coeff (coe p) z * D_bwd
+      -- And: D_fwd * D_bwd = 1
+      rw [hfwd, mul_assoc, mul_comm
+        (fderiv ℂ (φp ∘ φi.symm) w 1)
+        (fderiv ℂ (φi ∘ φp.symm) z 1),
+        htfm, mul_one]
+    | coe_val q =>
+      -- (coe p, coe q): reduce to cocycle_coe_coe
+      have hTarget :
+        (extChartAt 𝓘(ℂ, ℂ)
+          (coe p : HyperellipticOdd H h)).target =
+            (affineLiftChart (h := h) p).target := by
+        change Set.univ ∩ (ChartedSpace.chartAt
+          (coe p : HyperellipticOdd H h)).target = _
+        rw [Set.univ_inter]; rfl
+      have hSource :
+        (extChartAt 𝓘(ℂ, ℂ)
+          (coe q : HyperellipticOdd H h)).source =
+            (affineLiftChart (h := h) q).source := by
+        rw [extChartAt_source 𝓘(ℂ, ℂ)]
+        change (affineLiftChart (h := h) q).source =
+          (affineLiftChart (h := h) q).source
+        rfl
+      have hz' : z ∈ (affineLiftChart (h := h) p).target :=
+        hTarget ▸ hz
+      have hSrc' : (affineLiftChart (h := h) p).symm z ∈
+          (affineLiftChart (h := h) q).source := by
+        rw [← hSource]
+        exact hSrc
+      exact hyperellipticOddCoeff_cocycle_coe_coe g p q hz' hSrc'
 
 noncomputable def hyperellipticOddForm (H : HyperellipticData)
     [Fact (Odd H.f.natDegree)] (g : Polynomial ℂ) :
