@@ -482,7 +482,45 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
     --   (w⁻¹^2 * f'(w⁻¹^2) - (2g+2) * f(w⁻¹^2)) =
     --   hyperellipticAffineCoeff g a (w⁻¹ ^ 2) *
     --     fderiv(transition)(z)(1)
-    -- Remaining: unfold hyperellipticAffineCoeff + fderiv
+    -- Step 6: Unfold affine coefficient to affineProjXCoeff
+    have hAffCoeff :
+        HyperellipticAffine.hyperellipticAffineCoeff g a
+          (w⁻¹ ^ 2) =
+        HyperellipticAffine.affineProjXCoeff g a hpY
+          (w⁻¹ ^ 2) := by
+      simp [HyperellipticAffine.hyperellipticAffineCoeff, hpY]
+    rw [hAffCoeff]
+    -- Step 7: Show w⁻¹ ^ 2 ∈ affineChartProjX target
+    -- The transition maps z to w⁻¹ ^ 2 which is in projXLift.target
+    -- = affineChartProjX.target
+    have hInTarget : w⁻¹ ^ 2 ∈
+        ((HyperellipticAffine.affineChartProjX (H := H)
+          a hpY) :
+            OpenPartialHomeomorph (HyperellipticAffine H) ℂ).target := by
+      -- The transition maps z to w⁻¹ ^ 2, and transition maps
+      -- source to target
+      have hmem : z ∈ ((infinityChart H h).symm.trans
+          ((HyperellipticAffine.affineChartProjX (H := H)
+            a hpY).lift_openEmbedding
+              (OnePoint.isOpenEmbedding_coe
+                (X := HyperellipticAffine H)))).source :=
+        hTransSrc
+      have hmap := ((infinityChart H h).symm.trans
+          ((HyperellipticAffine.affineChartProjX (H := H)
+            a hpY).lift_openEmbedding
+              (OnePoint.isOpenEmbedding_coe
+                (X := HyperellipticAffine H)))).map_source hmem
+      rw [infinityChart_trans_affineLiftProjX_apply a hpY
+        hmem] at hmap
+      rw [OpenPartialHomeomorph.trans_target] at hmap
+      exact hmap.1
+    -- Step 8: Unfold affineProjXCoeff to explicit formula
+    rw [HyperellipticAffine.affineProjXCoeff_eq_on_target
+      g a hpY hInTarget]
+    -- Goal now:
+    -- 2 * g.eval(w⁻²) * (w⁻²)^(g+2) /
+    --   (w⁻² * f'(w⁻²) - (2g+2) * f(w⁻²)) =
+    --   (g.eval(w⁻²) / √_a(f(w⁻²))) * fderiv(transition)(z)(1)
     sorry
   · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
     have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
