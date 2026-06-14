@@ -197,4 +197,158 @@ theorem hyperellipticOddCoeff_cocycle_coe_coe (g : Polynomial ℂ) (p q : Hypere
   exact HyperellipticAffine.hyperellipticAffineCoeff_satisfiesCotangentCocycle
     g p q z hz_aff hsrc_aff
 
+lemma coeff_X_mul_derivative_eq (p : Polynomial ℂ) (i : ℕ) :
+    (X * p.derivative).coeff i = (i : ℂ) * p.coeff i := by
+  cases i
+  · simp
+  · simp [coeff_X_mul, coeff_derivative, Nat.cast_succ, mul_comm]
+
+lemma poly_rev_id (f : Polynomial ℂ) (N : ℕ) (hN : f.natDegree = N) :
+    X * f.derivative - C (N + 1 : ℂ) * f =
+      - reflect N (f.reverse + X * f.reverse.derivative) := by
+  ext i
+  rw [coeff_sub, coeff_C_mul, coeff_neg, coeff_reflect]
+  rw [coeff_add, coeff_X_mul_derivative_eq, coeff_X_mul_derivative_eq]
+  simp only [coeff_reverse, hN]
+  dsimp [revAt]
+  by_cases h1 : i ≤ N
+  · have h2 : N - i ≤ N := by omega
+    simp only [h1, h2, ite_true]
+    have h_eq : N - (N - i) = i := by omega
+    simp only [h_eq]
+    rw [Nat.cast_sub h1]
+    ring
+  · simp only [h1, ite_false]
+    have h_zero : f.coeff i = 0 := coeff_eq_zero_of_natDegree_lt (by linarith)
+    simp [h_zero]
+
+lemma natDegree_le_N (f : Polynomial ℂ) (N : ℕ) (hN : f.natDegree = N) :
+    (f.reverse + X * f.reverse.derivative).natDegree ≤ N := by
+  have h1 : f.reverse.natDegree ≤ N := by
+    calc f.reverse.natDegree ≤ f.natDegree := reverse_natDegree_le f
+      _ = N := hN
+  have h2 : (X * f.reverse.derivative).natDegree ≤ N := by
+    by_cases h0 : f.reverse.natDegree = 0
+    · have hc : f.reverse = C (f.reverse.coeff 0) := eq_C_of_natDegree_eq_zero h0
+      have hd : f.reverse.derivative = 0 := by
+        rw [hc, derivative_C]
+      simp [hd]
+    · calc (X * f.reverse.derivative).natDegree ≤ X.natDegree + f.reverse.derivative.natDegree := natDegree_mul_le
+        _ = 1 + f.reverse.derivative.natDegree := by rw [natDegree_X]
+        _ ≤ 1 + (f.reverse.natDegree - 1) := by
+          have hd := natDegree_derivative_le f.reverse
+          omega
+        _ ≤ N := by omega
+  calc (f.reverse + X * f.reverse.derivative).natDegree ≤ max f.reverse.natDegree (X * f.reverse.derivative).natDegree := natDegree_add_le _ _
+    _ ≤ N := max_le h1 h2
+
+lemma eval_reflect_eq (p : Polynomial ℂ) (N : ℕ) (hp : p.natDegree ≤ N) (W : ℂ) (hW : W ≠ 0) :
+    (reflect N p).eval (W⁻¹ ^ 2) = W⁻¹ ^ (2 * N) * p.eval (W ^ 2) := by
+  letI : Invertible (W ^ 2) := invertibleOfNonzero (pow_ne_zero 2 hW)
+  have h1 := eval₂_reflect_mul_pow (RingHom.id ℂ) (W ^ 2) N p hp
+  simp only [eval₂_id] at h1
+  have h2 : ⅟(W ^ 2) = W⁻¹ ^ 2 := by
+    simp [invOf_eq_inv, ← inv_pow]
+  rw [h2] at h1
+  have h3 : (W ^ 2) ^ N = W ^ (2 * N) := by ring
+  rw [h3] at h1
+  have hz : W ^ (2 * N) ≠ 0 := pow_ne_zero _ hW
+  have h4 := congr_arg (fun y => y * (W ^ (2 * N))⁻¹) h1
+  dsimp at h4
+  rw [mul_assoc, mul_inv_cancel₀ hz, mul_one] at h4
+  rw [h4]
+  simp [inv_pow]
+  ring
+
+lemma x_fderiv_sub_f_eq {H : HyperellipticData} (hOdd : Odd H.f.natDegree) (W : ℂ) (hW : W ≠ 0) :
+    let x := W⁻¹ ^ 2
+    x * H.f.derivative.eval x - (2 * H.genus + 2) * H.f.eval x =
+      - W⁻¹ ^ (4 * H.genus + 2) * (H.f.reverse.eval (W ^ 2) + W ^ 2 * H.f.reverse.derivative.eval (W ^ 2)) := by
+  intro x
+  have h_deg : 2 * H.genus + 2 = H.f.natDegree + 1 := by
+    obtain ⟨k, hk⟩ := hOdd
+    have h1 : H.f.natDegree = 2 * k + 1 := hk
+    have h2 : H.genus = k := by
+      dsimp [HyperellipticData.genus]
+      omega
+    omega
+  have h_degC : (2 * H.genus + 2 : ℂ) = (H.f.natDegree + 1 : ℂ) := by
+    exact_mod_cast h_deg
+  rw [h_degC]
+  have H_id := poly_rev_id H.f H.f.natDegree rfl
+  have H_eval := congr_arg (fun P : Polynomial ℂ => P.eval x) H_id
+  dsimp at H_eval
+  rw [eval_sub, eval_mul, eval_X, eval_mul, eval_C] at H_eval
+  rw [H_eval]
+  have H_reflect := eval_reflect_eq (H.f.reverse + X * H.f.reverse.derivative) H.f.natDegree
+    (natDegree_le_N H.f H.f.natDegree rfl) W hW
+  rw [eval_neg]
+  rw [H_reflect]
+  have h_pow : 2 * H.f.natDegree = 4 * H.genus + 2 := by
+    obtain ⟨k, hk⟩ := hOdd
+    have h1 : H.f.natDegree = 2 * k + 1 := hk
+    have h2 : H.genus = k := by
+      dsimp [HyperellipticData.genus]
+      omega
+    omega
+  rw [h_pow]
+  rw [eval_add, eval_mul, eval_X]
+  ring
+
+theorem hyperellipticOddCoeff_analyticOn_infinityChart
+    (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
+    AnalyticOn ℂ (hyperellipticOddCoeff (h := h) g (infty : HyperellipticOdd H h))
+      (infinityChart H h).target := by
+  sorry
+
+theorem hyperellipticOddCoeff_isHolomorphicOneFormCoeff
+    (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
+    IsHolomorphicOneFormCoeff (HyperellipticOdd H h)
+      (hyperellipticOddCoeff (H := H) (h := h) g) := by
+  intro p
+  induction p using HyperellipticOdd.rec with
+  | infty_val =>
+    have hExt_target : (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).target =
+        (infinityChart H h).target := by
+      change Set.univ ∩ (chartAt (infty : HyperellipticOdd H h)).target = (infinityChart H h).target
+      rw [Set.univ_inter]
+      rfl
+    rw [hExt_target]
+    exact hyperellipticOddCoeff_analyticOn_infinityChart g hDeg
+  | coe_val a =>
+    have hExt_target : (extChartAt 𝓘(ℂ, ℂ) (a : HyperellipticOdd H h)).target =
+        (affineLiftChart (h := h) a).target := by
+      change Set.univ ∩ (chartAt (a : HyperellipticOdd H h)).target = (affineLiftChart (h := h) a).target
+      rw [Set.univ_inter]
+      rfl
+    rw [hExt_target]
+    exact hyperellipticOddCoeff_analyticOn_affineLift g a
+
+theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : HyperellipticAffine H)
+    {z : ℂ} (hz : z ∈ (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).target)
+    (hsrc : (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm z ∈
+      (extChartAt 𝓘(ℂ, ℂ) (a : HyperellipticOdd H h)).source) :
+    hyperellipticOddCoeff (h := h) g infty z =
+      hyperellipticOddCoeff (h := h) g (coe a) ((extChartAt 𝓘(ℂ, ℂ) (a : HyperellipticOdd H h))
+        ((extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm z)) *
+        (fderiv ℂ ((extChartAt 𝓘(ℂ, ℂ) (a : HyperellipticOdd H h)) ∘
+          (extChartAt 𝓘(ℂ, ℂ) (infty : HyperellipticOdd H h)).symm) z 1) := by
+  sorry
+
+theorem hyperellipticOddCoeff_satisfiesCotangentCocycle
+    (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
+    SatisfiesCotangentCocycle (HyperellipticOdd H h)
+      (hyperellipticOddCoeff (H := H) (h := h) g) := by
+  sorry
+
+noncomputable def hyperellipticOddForm (H : HyperellipticData)
+    [Fact (Odd H.f.natDegree)] (g : Polynomial ℂ) :
+    HolomorphicOneForm (HyperellipticOdd H Fact.out) :=
+  if h : g.natDegree < (H.f.natDegree - 1) / 2 then
+    ⟨hyperellipticOddCoeff (H := H) (h := Fact.out) g,
+     hyperellipticOddCoeff_isHolomorphicOneFormCoeff g h,
+     hyperellipticOddCoeff_satisfiesCotangentCocycle g h,
+     hyperellipticOddCoeff_isZeroOffChartTarget g⟩
+  else 0
+
 end Jacobians.ProjectiveCurve.HyperellipticOdd
