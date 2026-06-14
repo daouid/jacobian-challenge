@@ -423,9 +423,56 @@ theorem infinity_transition_deriv_identity
         (deriv (InfinityInverse.t H) w)⁻¹) z := by
     convert hinv_sq_deriv.comp z hw_hda_symm using 1
   rw [hcomp.deriv]
-  -- Now need: (-2 * w^(-3)) * (t'(w))⁻¹ = RHS
-  -- This is the core algebraic identity relating
-  -- deriv(t)(w) to f, f', and the square root branch
+  -- Step 7: Implicit differentiation of t(w)² = w² * f_rev(w²)
+  -- Differentiating the LHS: 2 * t(w) * t'(w)
+  have ht_sq_hda : HasDerivAt
+      (fun u => (InfinityInverse.t H u) ^ 2)
+      (2 * InfinityInverse.t H w *
+        deriv (InfinityInverse.t H) w) w :=
+    (ht_hda.pow 2).congr_deriv (by ring)
+  -- Differentiating the RHS: d/dw[w² * P(w²)]
+  -- Product rule: (2w)*P(w²) + w²*(P'(w²)*2w)
+  have hrhs_hda : HasDerivAt
+      (fun u => u ^ 2 * H.f.reverse.eval (u ^ 2))
+      (2 * w * H.f.reverse.eval (w ^ 2) +
+        w ^ 2 * ((Polynomial.derivative
+          H.f.reverse).eval (w ^ 2) * (2 * w))) w := by
+    have h1 : HasDerivAt (fun u : ℂ => u ^ 2)
+        (2 * w) w := by
+      convert hasDerivAt_pow 2 w using 1; ring
+    have h2 : HasDerivAt
+        (fun u => H.f.reverse.eval (u ^ 2))
+        ((Polynomial.derivative H.f.reverse).eval
+          (w ^ 2) * (2 * w)) w := by
+      have hP := H.f.reverse.hasDerivAt (w ^ 2)
+      have hw2 : HasDerivAt (fun u : ℂ => u ^ 2)
+          (2 * w) w := by
+        convert hasDerivAt_pow 2 w using 1; ring
+      exact hP.comp w hw2
+    exact h1.mul h2
+  -- Since t² = w² * f_rev(w²), their derivatives agree
+  -- t(w) * t'(w) = w * (f_rev(w²) + w² * f_rev'(w²))
+  have hderivs_eq :
+      2 * InfinityInverse.t H w *
+        deriv (InfinityInverse.t H) w =
+      2 * w * H.f.reverse.eval (w ^ 2) +
+        w ^ 2 * ((Polynomial.derivative
+          H.f.reverse).eval (w ^ 2) * (2 * w)) := by
+    have h_eq : ∀ u, (InfinityInverse.t H u) ^ 2 =
+        u ^ 2 * H.f.reverse.eval (u ^ 2) :=
+      fun u => InfinityInverse.t_sq H u
+    have hlhs : HasDerivAt
+        (fun u => (InfinityInverse.t H u) ^ 2)
+        (2 * InfinityInverse.t H w *
+          deriv (InfinityInverse.t H) w) w := by
+      convert ht_hda.pow 2 using 1; ring
+    have hlhs' : HasDerivAt
+        (fun u => u ^ 2 * H.f.reverse.eval (u ^ 2))
+        (2 * InfinityInverse.t H w *
+          deriv (InfinityInverse.t H) w) w := by
+      convert hlhs using 1
+      ext u; exact (h_eq u).symm
+    exact hlhs'.unique hrhs_hda
   sorry
 
 theorem hyperellipticOddCoeff_analyticOn_infinityChart
