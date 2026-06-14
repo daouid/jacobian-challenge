@@ -467,13 +467,22 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
       dsimp [infty]
       simp only [hzt, hzne, if_pos, if_neg, not_false_eq_true]
     rw [hLHS]
-    -- Now the goal is:
-    -- 2 * g.eval(x) * x^(g+2) /
-    --   (x * f'(x) - (2g+2) * f(x)) =
+    -- Identify x = w⁻¹ ^ 2 using infinityInverseMap_val_of_ne_zero
+    have hInvMap := infinityInverseMap_val_of_ne_zero
+      z hzt_tLH hzne (H := H) (h := h)
+    -- x = (infinityInverseMap H h z).val.1 = w⁻¹ ^ 2
+    have hx_eq : (infinityInverseMap H h z).val.1 = w⁻¹ ^ 2 := by
+      -- infinityInverseMap = InfinityInverse.infinityInverseMap (wrapper)
+      change (InfinityInverse.infinityInverseMap H h z).val.1 =
+        w⁻¹ ^ 2
+      rw [hInvMap]
+    simp only [hx_eq]
+    -- Now the goal has w⁻¹ ^ 2 on both LHS and RHS:
+    -- 2 * g.eval(w⁻¹ ^ 2) * (w⁻¹ ^ 2)^(g+2) /
+    --   (w⁻¹^2 * f'(w⁻¹^2) - (2g+2) * f(w⁻¹^2)) =
     --   hyperellipticAffineCoeff g a (w⁻¹ ^ 2) *
     --     fderiv(transition)(z)(1)
-    -- where x = (infinityInverseMap H h z).val.1 = w⁻²
-    -- Remaining: unfold RHS + fderiv + algebraic identity
+    -- Remaining: unfold hyperellipticAffineCoeff + fderiv
     sorry
   · -- Case: a ∉ smoothLocusY (projY chart, transition z ↦ z · (w(z)⁻²)^(g+1))
     have hpX : a ∈ HyperellipticAffine.smoothLocusX H :=
