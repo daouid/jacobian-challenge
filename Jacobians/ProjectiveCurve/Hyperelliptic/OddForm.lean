@@ -296,6 +296,52 @@ lemma x_fderiv_sub_f_eq {H : HyperellipticData} (hOdd : Odd H.f.natDegree) (W : 
   rw [eval_add, eval_mul, eval_X]
   ring
 
+/-- **Implicit differentiation of `t(w)² = w² · f_rev(w²)`**.
+
+Differentiating both sides gives
+`2 t(w) t'(w) = 2w f_rev(w²) + 2w³ f_rev'(w²)`, i.e.
+`t'(w) · t(w) = w · (f_rev(w²) + w² · f_rev'(w²))`.
+
+Used to compute `deriv(t)(w)` in terms of the reverse polynomial
+and its derivative, which feeds into the cocycle identity. -/
+private lemma deriv_t_mul_t (w : ℂ) (hw : w ∈ InfinityInverse.U_S H) :
+    deriv (InfinityInverse.t H) w * InfinityInverse.t H w =
+      w * (H.f.reverse.eval (w ^ 2) +
+        w ^ 2 * H.f.reverse.derivative.eval (w ^ 2)) := by
+  have ht_ana := InfinityInverse.t_analyticAt_of_mem H hw
+  have ht_hda := ht_ana.differentiableAt.hasDerivAt
+  have hLHS : HasDerivAt (fun w => (InfinityInverse.t H w) ^ 2)
+    (2 * InfinityInverse.t H w * deriv (InfinityInverse.t H) w) w :=
+    (ht_hda.pow 2).congr_deriv (by ring)
+  have hw2 : HasDerivAt (fun w : ℂ => w ^ 2) (2 * w) w := by
+    have := hasDerivAt_pow 2 w; simpa using this
+  have hrev : HasDerivAt (fun w : ℂ => H.f.reverse.eval (w ^ 2))
+    (H.f.reverse.derivative.eval (w ^ 2) * (2 * w)) w := by
+    have := (H.f.reverse.hasDerivAt (w ^ 2)).comp w hw2
+    convert this using 1
+  have hRHS : HasDerivAt (fun w => w ^ 2 * H.f.reverse.eval (w ^ 2))
+    (2 * w * (H.f.reverse.eval (w ^ 2) +
+      w ^ 2 * H.f.reverse.derivative.eval (w ^ 2))) w := by
+    have := hw2.mul hrev; convert this using 1; ring
+  have h_eq : (fun w => (InfinityInverse.t H w) ^ 2) =
+    (fun w => w ^ 2 * H.f.reverse.eval (w ^ 2)) := by
+    ext w; exact InfinityInverse.t_sq H w
+  have huniq := hLHS.unique (h_eq ▸ hRHS)
+  -- huniq : 2*t(w)*t'(w) = 2*w*(...)
+  -- Goal: t'(w)*t(w) = w*(...)
+  have h2ne : (2 : ℂ) ≠ 0 := two_ne_zero
+  have h1 : InfinityInverse.t H w *
+      deriv (InfinityInverse.t H) w =
+    w * (H.f.reverse.eval (w ^ 2) +
+      w ^ 2 * H.f.reverse.derivative.eval (w ^ 2)) := by
+    have : 2 * (InfinityInverse.t H w *
+        deriv (InfinityInverse.t H) w) =
+      2 * (w * (H.f.reverse.eval (w ^ 2) +
+        w ^ 2 * H.f.reverse.derivative.eval (w ^ 2))) := by
+      linear_combination huniq
+    exact mul_left_cancel₀ h2ne this
+  linear_combination h1
+
 /-- **Key identity for the infinity-to-affine cocycle**.
 
 At a point `z ≠ 0` in the infinity chart target, the derivative of the
@@ -318,6 +364,7 @@ Proof requires:
 4. Connection between `S(w²)` and the square root branch `y`
 -/
 theorem infinity_transition_deriv_identity
+    (hOdd : Odd H.f.natDegree)
     (a : HyperellipticAffine H)
     (hpY : a ∈ HyperellipticAffine.smoothLocusY H)
     {z : ℂ}
@@ -328,7 +375,10 @@ theorem infinity_transition_deriv_identity
         ((HyperellipticAffine.affineChartProjX (H := H)
           a hpY) :
             OpenPartialHomeomorph
-              (HyperellipticAffine H) ℂ).target) :
+              (HyperellipticAffine H) ℂ).target)
+    (hYSrc : z * (((InfinityInverse.tLocalHomeomorph H).symm
+      z)⁻¹ ^ 2) ^ (H.genus + 1) ∈
+        (a.squareLocalHomeomorph hpY).source) :
     let w := (InfinityInverse.tLocalHomeomorph H).symm z
     (fderiv ℂ
       (fun z => ((InfinityInverse.tLocalHomeomorph H).symm
@@ -483,19 +533,78 @@ theorem infinity_transition_deriv_identity
   --        These are the same point by chart compatibility.
   have hBranch : (a.squareLocalHomeomorph hpY).symm
       (H.f.eval (w⁻¹ ^ 2)) = z * (w⁻¹ ^ 2) ^ (H.genus + 1) := by
-    have hq_snd :=
-      HyperellipticAffine.affineChartProjX_symm_apply_snd
-        a hpY hInTarget
-    rw [← hq_snd]
-    -- Goal: (affineChartProjX.symm(w⁻¹^2)).val.2 = z * (w⁻¹^2)^(g+1)
-    -- Both are y-coordinates of the same point on the curve,
-    -- identified via the infinity-to-affine chart transition.
-    -- This requires showing infinityInverseMap z ∈ source,
-    -- which needs the chart overlap membership from the caller.
-    sorry
-  -- Now use hBranch, hderivs_eq, and x_fderiv_sub_f_eq
-  -- to close the algebraic identity
-  sorry
+    have hy_sq := InfinityInverse.y_sq_eq_eval_x hOdd z hzt hzne
+    have h_left_inv :=
+      (a.squareLocalHomeomorph hpY).left_inv hYSrc
+    have h_sq_app : (a.squareLocalHomeomorph hpY)
+        (z * (w⁻¹ ^ 2) ^ (H.genus + 1)) =
+        (z * (w⁻¹ ^ 2) ^ (H.genus + 1)) ^ 2 := by
+      simp [HyperellipticAffine.squareLocalHomeomorph]
+    rw [h_sq_app, hy_sq] at h_left_inv
+    exact h_left_inv
+  -- Step 9: Algebraic identity
+  -- LHS = -2*w^(-3) / t'(w) = 2*z*x^(2g+3) / D = RHS
+  -- Strategy: use deriv_t_mul_t for implicit diff, substitute y = z*x^(g+1),
+  -- express t'(w) and D in terms of R := f_rev(w²) + w²*f_rev'(w²),
+  -- then field_simp + ring.
+  set x := w⁻¹ ^ 2 with hx_def
+  rw [hBranch]
+  -- Set up R = f_rev(w²) + w²*f_rev'(w²) using deriv_t_mul_t
+  set R := H.f.reverse.eval (w ^ 2) +
+    w ^ 2 * H.f.reverse.derivative.eval (w ^ 2) with hR_def
+  have h_impl := deriv_t_mul_t w hw_US
+  rw [InfinityInverse.tLocalHomeomorph_right_inv H hzt]
+    at h_impl
+  -- h_impl : t'(w) * z = w * R (after folding R)
+  change deriv (InfinityInverse.t H) w * z = w * R at h_impl
+  -- R ≠ 0 (from t'(w) ≠ 0 and z ≠ 0)
+  have hR_ne : R ≠ 0 := by
+    intro hR; rw [hR, mul_zero] at h_impl
+    rcases mul_eq_zero.mp h_impl with hh | hh
+    · exact ht_deriv_ne hh
+    · exact hzne hh
+  -- t'(w) = w * R / z
+  have h_deriv_val :
+      deriv (InfinityInverse.t H) w = w * R / z := by
+    field_simp; linear_combination h_impl
+  -- D = -w⁻¹^(4g+2) * R (from x_fderiv_sub_f_eq)
+  have h_denom := x_fderiv_sub_f_eq hOdd w hw_ne
+  -- Substitute and close by field_simp + ring
+  rw [h_deriv_val, h_denom, hx_def,
+    show w ^ (-3 : ℤ) = (w ^ 3)⁻¹ from zpow_neg w 3]
+  field_simp
+  -- Rewrite denominator back to R and cancel R/R
+  conv_rhs =>
+    rw [show eval (w ^ 2) H.f.reverse +
+      w ^ 2 * eval (w ^ 2) (derivative H.f.reverse) = R
+      from hR_def.symm]
+  rw [show w ^ 4 * R * (1 / w ^ 2) ^ (H.genus + 2) *
+      (1 / w ^ 2) ^ (H.genus + 1) / R =
+    w ^ 4 * (1 / w ^ 2) ^ (H.genus + 2) *
+      (1 / w ^ 2) ^ (H.genus + 1) from by
+      rw [show w ^ 4 * R * (1 / w ^ 2) ^ (H.genus + 2) *
+          (1 / w ^ 2) ^ (H.genus + 1) =
+        R * (w ^ 4 * (1 / w ^ 2) ^ (H.genus + 2) *
+          (1 / w ^ 2) ^ (H.genus + 1)) from by ring]
+      exact mul_div_cancel_left₀ _ hR_ne]
+  -- Power identity: -(1/w)^(4g+2) = -(w^4 * (1/w^2)^(g+2) * (1/w^2)^(g+1))
+  simp only [one_div, inv_pow, ← pow_mul]
+  -- Now: -(w^(4g+2))⁻¹ = -(w^4 * (w^(2*(g+2)))⁻¹ * (w^(2*(g+1)))⁻¹)
+  congr 1
+  -- (w^(4g+2))⁻¹ = w^4 * (w^(2g+4))⁻¹ * (w^(2g+2))⁻¹
+  conv_rhs =>
+    rw [mul_assoc, ← mul_inv, ← pow_add,
+      show 2 * (H.genus + 2) + 2 * (H.genus + 1) =
+        4 * H.genus + 6 from by ring,
+      show (4 * H.genus + 6) = (4 * H.genus + 2) + 4
+        from by omega,
+      pow_add, mul_inv,
+      show w ^ 4 * ((w ^ (4 * H.genus + 2))⁻¹ *
+        (w ^ 4)⁻¹) =
+        (w ^ (4 * H.genus + 2))⁻¹ from by
+        rw [mul_comm (w ^ (4 * H.genus + 2))⁻¹,
+          ← mul_assoc, mul_inv_cancel₀
+          (pow_ne_zero 4 hw_ne), one_mul]]
 
 theorem hyperellipticOddCoeff_analyticOn_infinityChart
     (g : Polynomial ℂ) (hDeg : g.natDegree < (H.f.natDegree - 1) / 2) :
@@ -753,10 +862,44 @@ theorem hyperellipticOddCoeff_cocycle_infty_coe (g : Polynomial ℂ) (a : Hypere
         a hpY hu
     rw [Filter.EventuallyEq.fderiv_eq hEqNear]
     -- Now the fderiv is of z → w(z)⁻¹ ^ 2
+    -- Derive y-coordinate source membership from chart overlap
+    have hYSrc : z * (w⁻¹ ^ 2) ^ (H.genus + 1) ∈
+        (a.squareLocalHomeomorph hpY).source := by
+      -- From hTransSrc: infinityChart.symm(z) ∈ projXLift.source
+      -- For z ≠ 0: infinityChart.symm(z) = coe(infinityInverseMap(z))
+      have h_eq_coe : (infinityChart H h).symm z =
+          (coe : HyperellipticAffine H → HyperellipticOdd H h)
+            (InfinityInverse.infinityInverseMap H h z) := by
+        change infinityBackward H h z = _
+        unfold infinityBackward
+        rw [if_neg hzne]
+      -- infinityInverseMap(z) ∈ affineChartProjX.source
+      have h_in_src : InfinityInverse.infinityInverseMap H h z ∈
+          (HyperellipticAffine.affineChartProjX (H := H) a hpY).source := by
+        have h_proj_src : (infinityChart H h).symm z ∈
+            ((a.affineChartProjX hpY).lift_openEmbedding
+              (OnePoint.isOpenEmbedding_coe
+                (X := HyperellipticAffine H))).source := by
+          exact hTransSrc.2
+        rw [h_eq_coe] at h_proj_src
+        simp only [OpenPartialHomeomorph.lift_openEmbedding_source] at h_proj_src
+        obtain ⟨q, hq, heq⟩ := h_proj_src
+        have : q = InfinityInverse.infinityInverseMap H h z :=
+          OnePoint.coe_injective heq
+        rwa [← this]
+      -- affineChartProjX.source says q.val.2 ∈ sqLH.source
+      -- and infinityInverseMap(z).val.2 = z * (w⁻¹^2)^(g+1)
+      have h_val := infinityInverseMap_val_of_ne_zero z
+        hzt_tLH hzne (H := H) (h := h)
+      have h_snd : (InfinityInverse.infinityInverseMap
+          H h z).val.2 =
+          z * (w⁻¹ ^ 2) ^ (H.genus + 1) := by rw [h_val]
+      rw [← h_snd]
+      exact h_in_src
     -- Apply infinity_transition_deriv_identity to get the
     -- explicit derivative value
-    rw [infinity_transition_deriv_identity a hpY
-      hzt_tLH hzne hInTarget]
+    rw [infinity_transition_deriv_identity h a hpY
+      hzt_tLH hzne hInTarget hYSrc]
     -- Goal is now:
     -- 2 * g(w⁻²) * (w⁻²)^(g+2) / denom =
     --   g(w⁻²) / y * (2 * (w⁻²)^(g+2) * y / denom)
